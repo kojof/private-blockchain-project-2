@@ -23,15 +23,17 @@ class Block {
 |  Class with a constructor for new blockchain 		|
 |  ================================================*/
 
-class Blockchain {
-	constructor() {
+class Blockchain
+{
+	constructor() 
+	{
 		this.addBlock(new Block("First block in the chain - Genesis block"));
 	}
 
 	// Add new block
 	async addBlock(newBlock) {
 		// Block height
-		let blockHeight = await getBlockHeight();
+		let blockHeight = await this.getBlockHeight();
 
 		// UTC timestamp
 		newBlock.time = new Date().getTime().toString().slice(0, -3);
@@ -40,7 +42,7 @@ class Blockchain {
 		if (blockHeight > 0) {
 			newBlock.height = blockHeight;
 
-			const block = await getBlock(blockHeight - 1);
+			const block = await this.getBlock(blockHeight - 1);
 
 			newBlock.previousBlockHash = JSON.parse(block).hash;
 		} else {
@@ -56,10 +58,22 @@ class Blockchain {
 		levelSandbox.addLevelDBData(blockHeight, JSON.stringify(newBlock));
 	}
 
+		// get block
+	async getBlock(blockHeight) {
+		let block = await levelSandbox.getLevelDBData(blockHeight);
+		return block;
+	}
+
+	// Get block height
+	async getBlockHeight() {
+		let blockHeight = await levelSandbox.getBlockHeight();
+		return blockHeight;
+	}
+
 	// validate block
-	async validateBlock(blockHeight) {
+	async  validateBlock(blockHeight) {
 		// get block object
-		let block = await getBlock(blockHeight);
+		let block = await this.getBlock(blockHeight);
 
 		block = JSON.parse(block);
 
@@ -86,17 +100,17 @@ class Blockchain {
 		let errorLog = [];
 
 		// get block height
-		let blockHeight = await getBlockHeight();
+		let blockHeight = await this.getBlockHeight();
 
 		for (var i = 0; i < blockHeight; i++) {
 
 			if (i > 0) {
 				// get block object
-				let block = await getBlock(i);
+				let block = await this.getBlock(i);
 				block = JSON.parse(block);
 
 				// get  next block object
-				let previousBlock = await getBlock(i - 1);
+				let previousBlock = await this.getBlock(i - 1);
 				previousBlock = JSON.parse(previousBlock);
 
 				// validate block
@@ -121,17 +135,7 @@ class Blockchain {
 	}
 }
 
-// get block
-async function getBlock(blockHeight) {
-	let block = await levelSandbox.getLevelDBData(blockHeight);
-	return block;
-}
 
-// Get block height
-async function getBlockHeight() {
-	let blockHeight = await levelSandbox.getBlockHeight();
-	return blockHeight;
-}
 
 module.exports = {
 	Block: Block,
