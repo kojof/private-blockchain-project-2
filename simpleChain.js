@@ -115,13 +115,13 @@ class Blockchain
 		{
 			if(i === 0)
 			{
-				validateBlock(i);
+				this.validateBlock(i);
 			}
 			else if (i > 0) {
 				// get block object
 				let block = await this.getBlock(i);
 				block = JSON.parse(block);
-
+				
 				// get  next block object
 				let previousBlock = await this.getBlock(i - 1);
 				previousBlock = JSON.parse(previousBlock);
