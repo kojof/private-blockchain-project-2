@@ -4,7 +4,11 @@ let BlockChain = require('./simpleChain').Blockchain
 
 
 
-let block = new Block();
+
 let blockChain = new BlockChain();
-blockChain.addBlock(block);
+for(var i =0; i < 10; i++)
+{   
+    blockChain.addBlock(new Block("test data " + i));
+}
+
 blockChain.validateChain();

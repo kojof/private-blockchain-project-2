@@ -27,7 +27,18 @@ class Blockchain
 {
 	constructor() 
 	{
-		this.addBlock(new Block("First block in the chain - Genesis block"));
+			
+		this.checkIfGenesisBlockExists();
+	}
+
+	// Check If Genesis Block exists, if so, don't add it
+	async checkIfGenesisBlockExists()
+	{
+		let blockHeight = await this.getBlockHeight();	
+		if(blockHeight === 0)
+		{
+			this.addBlock(new Block("First block in the chain - Genesis block"));
+		}	
 	}
 
 	// Add new block
@@ -52,10 +63,10 @@ class Blockchain
 		// Block hash with SHA256 using newBlock and converting to a string
 		newBlock.hash = SHA256(JSON.stringify(newBlock)).toString();
 
-		newBlock.body = "Block # " + blockHeight
-
 		// Adding block object to chain
 		levelSandbox.addLevelDBData(blockHeight, JSON.stringify(newBlock));
+
+		console.log(newBlock);
 	}
 
 		// get block
@@ -90,7 +101,7 @@ class Blockchain
 		if (blockHash === validBlockHash) {
 			return true;
 		} else {
-			//	console.log('Block #'+blockHeight+' invalid hash:\n'+blockHash+'<>'+validBlockHash);
+				console.log('Block #'+blockHeight+' invalid hash:\n'+blockHash+'<>'+validBlockHash);
 			return false;
 		}
 	}
@@ -102,9 +113,13 @@ class Blockchain
 		// get block height
 		let blockHeight = await this.getBlockHeight();
 
-		for (var i = 0; i < blockHeight; i++) {
-
-			if (i > 0) {
+		for (var i = 0; i < blockHeight; i++) 
+		{
+			if(i === 0)
+			{
+				validateBlock(i);
+			}
+			else if (i > 0) {
 				// get block object
 				let block = await this.getBlock(i);
 				block = JSON.parse(block);
