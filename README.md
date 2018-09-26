@@ -24,6 +24,10 @@ npm install crypto-js --save
 ```
 npm install level --save
 ```
+- Install Express with --save flag
+```
+npm install express --save
+```
 
 ## Testing
 
@@ -59,3 +63,8 @@ for (var i = 0; i < inducedErrorBlocks.length; i++) {
 ```
 blockchain.validateChain();
 ```
+
+## EndPoints
+
+POST Block/:body
+GET Block/:blockheight
