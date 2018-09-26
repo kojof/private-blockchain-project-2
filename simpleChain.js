@@ -43,9 +43,10 @@ class Blockchain
 
 	// Add new block
 	async addBlock(newBlock) {
-		// Block height
-		let blockHeight = await this.getBlockHeight();
 
+		// Block height
+		let blockHeight = await this.getBlockHeight();		
+		
 		// UTC timestamp
 		newBlock.time = new Date().getTime().toString().slice(0, -3);
 
@@ -62,7 +63,7 @@ class Blockchain
 
 		// Block hash with SHA256 using newBlock and converting to a string
 		newBlock.hash = SHA256(JSON.stringify(newBlock)).toString();
-
+		
 		// Adding block object to chain
 		levelSandbox.addLevelDBData(blockHeight, JSON.stringify(newBlock));		
 	}
