@@ -23,30 +23,26 @@ class Block {
 |  Class with a constructor for new blockchain 		|
 |  ================================================*/
 
-class Blockchain
-{
-	constructor() 
-	{
-			
+class Blockchain {
+	constructor() {
+
 		this.checkIfGenesisBlockExists();
 	}
 
 	// Check If Genesis Block exists, if so, don't add it
-	async checkIfGenesisBlockExists()
-	{
-		let blockHeight = await this.getBlockHeight();	
-		if(blockHeight === 0)
-		{
+	async checkIfGenesisBlockExists() {
+		let blockHeight = await this.getBlockHeight();
+		if (blockHeight === 0) {
 			this.addBlock(new Block("First block in the chain - Genesis block"));
-		}	
+		}
 	}
 
 	// Add new block
 	async addBlock(newBlock) {
 
 		// Block height
-		let blockHeight = await this.getBlockHeight();		
-		
+		let blockHeight = await this.getBlockHeight();
+
 		// UTC timestamp
 		newBlock.time = new Date().getTime().toString().slice(0, -3);
 
@@ -63,12 +59,12 @@ class Blockchain
 
 		// Block hash with SHA256 using newBlock and converting to a string
 		newBlock.hash = SHA256(JSON.stringify(newBlock)).toString();
-		
+
 		// Adding block object to chain
-		levelSandbox.addLevelDBData(blockHeight, JSON.stringify(newBlock));		
+		levelSandbox.addLevelDBData(blockHeight, JSON.stringify(newBlock));
 	}
 
-		// get block
+	// get block
 	async getBlock(blockHeight) {
 		let block = await levelSandbox.getLevelDBData(blockHeight);
 		return block;
@@ -81,7 +77,7 @@ class Blockchain
 	}
 
 	// validate block
-	async  validateBlock(blockHeight) {
+	async validateBlock(blockHeight) {
 		// get block object
 		let block = await this.getBlock(blockHeight);
 
@@ -100,7 +96,7 @@ class Blockchain
 		if (blockHash === validBlockHash) {
 			return true;
 		} else {
-				console.log('Block #'+blockHeight+' invalid hash:\n'+blockHash+'<>'+validBlockHash);
+			console.log('Block #' + blockHeight + ' invalid hash:\n' + blockHash + '<>' + validBlockHash);
 			return false;
 		}
 	}
@@ -112,17 +108,14 @@ class Blockchain
 		// get block height
 		let blockHeight = await this.getBlockHeight();
 
-		for (var i = 0; i < blockHeight; i++) 
-		{
-			if(i === 0)
-			{
+		for (var i = 0; i < blockHeight; i++) {
+			if (i === 0) {
 				this.validateBlock(i);
-			}
-			else if (i > 0) {
+			} else if (i > 0) {
 				// get block object
 				let block = await this.getBlock(i);
 				block = JSON.parse(block);
-				
+
 				// get  next block object
 				let previousBlock = await this.getBlock(i - 1);
 				previousBlock = JSON.parse(previousBlock);
@@ -147,6 +140,86 @@ class Blockchain
 			console.log('No errors detected');
 		}
 	}
+
+	async getBlocksByAddress(walletAddress) {
+		try {
+			// get blocks
+			let blocks = await levelSandbox.getBlocksByAddress(walletAddress);
+			let blockChain = this.createBlocks(blocks);
+			return blockChain;
+		} catch (error) {
+
+		}
+	}
+
+	async getBlocksByHash(hash) {
+		try {
+			// get blocks
+			let blocks = await levelSandbox.getBlocksByHash(hash);
+			let blockChain = this.createBlocks(blocks);
+			return blockChain;
+		} catch (error) {
+
+		}
+	}
+
+	async getBlocksByHeight(height) {
+		let blockChain = [];
+		try {
+
+			// get blocks
+			let blocks = await levelSandbox.getBlocksByHeight(height);
+			let blockChain = this.createBlocks(blocks);
+			return blockChain;
+		} catch (error) {
+
+		}
+	}
+
+
+	async createBlocks(blocks) {
+		let blockChain = [];
+
+		for (var i = 0; i < blocks.length; i++) {
+			let block = (blocks[i]);
+
+			const hash = block.hash;
+			const height = block.height;
+			const address = block.body.address;
+			const right_ascension = block.body.star.ra;
+			const story = block.body.star.story;
+			const declination = block.body.star.dec;
+			let storyDecoded = '';
+			const time = block.time;
+			const previousBlockHash = block.previousBlockHash;
+
+			if (story != "") {
+				storyDecoded = Buffer.from(story, 'hex').toString('utf8');
+			}
+
+			let recreateBlock = {
+				"hash": hash,
+				"height": height,
+				"body": {
+					"address": address,
+					"star": {
+						"ra": right_ascension,
+						"dec": declination,
+						"story": story,
+						"storyDecoded": storyDecoded
+					}
+				},
+				"time": time,
+				"previousBlockHash": previousBlockHash
+			};
+			blockChain.push(recreateBlock);
+		}
+		//	console.log(blockChain);
+		blockChain = JSON.stringify(blockChain);
+		blockChain = JSON.parse(blockChain);
+		return blockChain;
+	}
+
 }
 
 

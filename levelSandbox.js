@@ -10,7 +10,10 @@ module.exports = {
 
     addLevelDBData: addLevelDBData,
     getLevelDBData: getLevelDBData,
-    getBlockHeight: getBlockHeight
+    getBlockHeight: getBlockHeight,
+    getBlocksByAddress : getBlocksByAddress,
+    getBlocksByHash : getBlocksByHash,
+    getBlocksByHeight : getBlocksByHeight    
 }
 
 // Add data to levelDB with key/value pair
@@ -45,6 +48,86 @@ function getBlockHeight() {
        // console.log("Block Height is " + i);
         resolve(i);
     }))
-}
+};
 
-;
+// Get Blocks by Address
+function getBlocksByAddress(walletAddress) 
+{  
+    let blocks= [];   
+    return new Promise((resolve, reject) => db.createReadStream().on('data', function (data) {    
+       
+        var block  = JSON.parse(data.value);
+       
+        if(block != null)
+        {
+            if (block.body.address == walletAddress)
+            {               
+                blocks.push(block);             
+            }
+        }   
+       
+    }).on('error', function (err) {
+        return console.log('Unable to get blocks!', err);
+        reject(err);
+    }).on('close', function () {
+       // console.log("Block Height is " + i);
+    //   console.log(blocks);
+        resolve(blocks);
+    }))
+};
+
+// Get Blocks by Hash
+function getBlocksByHash(hash) 
+{  
+    let blocks= [];   
+    return new Promise((resolve, reject) => db.createReadStream().on('data', function (data) {    
+       
+        var block  = JSON.parse(data.value);
+       
+        if(block != null)
+        {
+           
+            if (block.hash == hash)
+            {               
+              //  console.log(block);
+                blocks.push(block);             
+            }
+        }   
+       
+    }).on('error', function (err) {
+        return console.log('Unable to get blocks!', err);
+        reject(err);
+    }).on('close', function () {
+       // console.log("Block Height is " + i);
+    //   console.log(blocks);
+        resolve(blocks);
+    }))
+};
+
+function getBlocksByHeight(height) 
+{  
+    let blocks= [];   
+    return new Promise((resolve, reject) => db.createReadStream().on('data', function (data) {    
+       
+        var block  = JSON.parse(data.value);
+       
+        if(block != null)
+        {           
+            if (block.height == height)
+            {               
+              //  console.log(block);
+                blocks.push(block);             
+            }
+        }   
+       
+    }).on('error', function (err) {
+        return console.log('Unable to get blocks!', err);
+        reject(err);
+    }).on('close', function () {
+       // console.log("Block Height is " + i);
+    //   console.log(blocks);
+        resolve(blocks);
+    }))
+};
+
+
