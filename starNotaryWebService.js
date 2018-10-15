@@ -4,7 +4,7 @@ const bitcoin = require('bitcoinjs-lib');
 const bitcoinMessage = require('bitcoinjs-message');
 const express = require('express');
 const app = express();
-var bodyParser = require('body-parser');
+const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({ // to support URL-encoded bodies
     extended: true
 }));
@@ -18,11 +18,11 @@ app.get('/', (req, res) => res.send('hello world'));
 
 app.post('/requestValidation/:address', async function (req, res) {
     try {
-        if (!req.params.address) {
+        if (!req.body.address) {
             res.status(400).send('address parameter is required');
         }
 
-        const walletAddress = req.params.address;
+        const walletAddress = req.body.address;
         const starRegistry = "starRegistry";
         const timeStamp = new Date().getTime();
         timeValidationWindow.push({
@@ -76,7 +76,7 @@ app.post('/message-signature/validate', function (req, res) {
         }
     });
     // console.log(req.body.signature);
-    res.send(response);
+    res.json(response);
 });
 
 app.post('/block', async function (req, res) {
@@ -86,8 +86,8 @@ app.post('/block', async function (req, res) {
     let message = JSON.parse(convertMessage);
 
     const story = message.star.story;
-    const right_ascension = message.star.ra;
-    const declination = message.star.dec;
+    const right_ascension = message.star.story.ra;
+    const declination = message.star.story.dec;
     const storyBuffer = Buffer.from(story, 'ascii');
 
     const body = {
@@ -116,7 +116,7 @@ app.get('/stars/address/:address', async function (req, res) {
         }
         const walletAddress = req.params.address;
         const response = await blockChain.getBlocksByAddress(walletAddress);
-        console.log(response);
+        //console.log(response);
         res.json(response);    
     } 
     
@@ -157,7 +157,7 @@ app.get('/block/:height', async function (req, res) {
         }
         const height = req.params.height;
         const response = await blockChain.getBlocksByHeight(height);
-        console.log(response);
+        //console.log(response);
         res.json(response);    
     } 
     
