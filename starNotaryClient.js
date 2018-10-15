@@ -5,7 +5,7 @@ let message;
 let walletAddress;
 
 
-request.post('http://localhost:8000/requestValidation/1HZwkjkeaoZfTSaJxDw6aKkxp45agDiEzN', 
+request.post('http://localhost:8000/requestValidation',  //1HZwkjkeaoZfTSaJxDw6aKkxp45agDiEzN
 {
     json: true
 }, (err, res, body) => 
@@ -39,7 +39,7 @@ request.post('http://localhost:8000/requestValidation/1HZwkjkeaoZfTSaJxDw6aKkxp4
         }
     };
 
-    // Start the request
+    //Start the request
     request(options, function (error, response, body) {
 
         if (!error && response.statusCode == 200) {
@@ -60,19 +60,19 @@ request.post('http://localhost:8000/requestValidation/1HZwkjkeaoZfTSaJxDw6aKkxp4
                 method: 'POST',
                 headers: headers,
                 form: {
-                    'walletAddress': walletAddress,
+                    'address': walletAddress,
                     'star': star
                 }
             };   
             
-            request(options, function (error, response, body) 
-            {
+            // request(options, function (error, response, body) 
+            // {
 
-                if (!error && response.statusCode == 200) {
-                    // Print out the response body
-              //      console.log(response.body);
-                }
-            });          
+            //     if (!error && response.statusCode == 200) {
+            //         // Print out the response body
+            //         console.log(response.body);
+            //     }
+            // });          
         }
     }) 
 });

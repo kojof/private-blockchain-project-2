@@ -214,15 +214,12 @@ class Blockchain {
 			};
 			blockChain.push(recreateBlock);
 		}
-		//	console.log(blockChain);
+
 		blockChain = JSON.stringify(blockChain);
 		blockChain = JSON.parse(blockChain);
 		return blockChain;
 	}
-
 }
-
-
 
 module.exports = {
 	Block: Block,

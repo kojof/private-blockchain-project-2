@@ -32,7 +32,10 @@ npm install express --save
 ```
 npm install nodemon --save
 ```
-
+- Install connect-timeout with --save flag
+```
+npm install connect-timeout
+```
 ## Testing
 
 To test code:
