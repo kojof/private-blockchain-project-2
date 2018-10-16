@@ -62,6 +62,8 @@ class Blockchain {
 
 		// Adding block object to chain
 		levelSandbox.addLevelDBData(blockHeight, JSON.stringify(newBlock));
+
+		return newBlock;
 	}
 
 	// get block

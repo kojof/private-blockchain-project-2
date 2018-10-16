@@ -18,16 +18,16 @@ let blockChain = new BlockChain();
 
 app.get('/', (req, res) => res.send('hello world'));
 
-app.use(function (req, res, next) {
-    res.setTimeout(300000, function () {
-        const address = req.body.address;
-        console.log('Request has timed out.');
-        timeValidationWindow.delete(address);
-        //     res.send(408);
-    });
+// app.use(function (req, res, next) {
+//     res.setTimeout(300000, function () {
+//         const address = req.body.address;
+//         console.log('Request has timed out.');
+//         timeValidationWindow.delete(address);
+//         //     res.send(408);
+//     });
 
-    next();
-});
+//     next();
+// });
 
 app.post('/requestValidation', async function (req, res) {
     try {
@@ -39,8 +39,6 @@ app.post('/requestValidation', async function (req, res) {
         const starRegistry = "starRegistry";
         let timeStamp = Date.now();
 
-        timeValidationWindow.set(walletAddress, timeStamp);
-
         const messageFormat = `${walletAddress}:${timeStamp}:${starRegistry}`;
 
         var keyPair = bitcoin.ECPair.fromWIF('5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss');
@@ -48,9 +46,9 @@ app.post('/requestValidation', async function (req, res) {
         var signature = bitcoinMessage.sign(messageFormat, privateKey, keyPair.compressed).toString('base64');
 
         //Use IF statement to delete validation request from memory if elapsed time exceeds 300, setTimeout() function
+        let timeout = getTimeValidationWindow(walletAddress);
 
-        const savedTimeStamp = timeValidationWindow.get(walletAddress);
-        let timeout = Date.now() - savedTimeStamp;
+        timeValidationWindow.set(walletAddress, timeStamp);
 
         console.log(`${timeout} ms have passed since I was scheduled`);
 
@@ -72,6 +70,7 @@ app.post('/requestValidation', async function (req, res) {
     }
 });
 
+
 app.post('/message-signature/validate', function (req, res) {
     const walletAddress = req.body.address;
     const signature = req.body.signature;
@@ -84,6 +83,7 @@ app.post('/message-signature/validate', function (req, res) {
     const verifySignature = bitcoinMessage.verify(messageFormat, walletAddress, signature);
 
     const messageSignature = verifySignature ? "valid" : "invalid";
+    let timeout = getTimeValidationWindow(walletAddress);
 
     var response = {
         "registerStar": verifySignature,
@@ -91,11 +91,11 @@ app.post('/message-signature/validate', function (req, res) {
             "address": walletAddress,
             "requestTimeStamp": timeStamp,
             "message": messageFormat,
-            "validationWindow": 300,
+            "validationWindow": timeout,
             "messageSignature": messageSignature
         }
     };
-    // console.log(req.body.signature);
+
     res.json(response);
 });
 
@@ -120,11 +120,8 @@ app.post('/block', async function (req, res) {
         }
     };
 
-    console.log(req.body);
-
-    blockChain.addBlock(new Block(body));
-
-    res.json();
+    var response = await blockChain.addBlock(new Block(body));
+    res.json(response);
 });
 
 
@@ -137,8 +134,8 @@ app.get('/stars/address/:address', async function (req, res) {
         }
         const walletAddress = req.params.address;
         const response = await blockChain.getBlocksByAddress(walletAddress);
-        //console.log(response);
-        res.json(response);
+        console.log(response);
+        res.json();
     } catch (error) {
         res.status(500).json({
             error: error.toString()
@@ -182,6 +179,23 @@ app.get('/block/:height', async function (req, res) {
         });
     }
 });
+
+
+function getTimeValidationWindow(walletAddress) {
+    let timeout = 0;
+    if (timeValidationWindow.get(walletAddress) == null) {
+        timeout = 300;
+    } else {
+
+        const savedTimeStamp = timeValidationWindow.get(walletAddress);
+        if (savedTimeStamp == 0) {
+            return;
+        } else {
+            timeout = Date.now() - savedTimeStamp;
+        }
+    }
+    return timeout;
+}
 
 const port = process.env.port || 8000;
 app.listen(port, () => console.log(`App listening on port ${port}...`));

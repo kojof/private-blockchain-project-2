@@ -307,3 +307,6 @@ Example: JSON response
   "time": "1532296234",
   "previousBlockHash": "49cce61ec3e6ae664514d5fa5722d86069cf981318fc303750ce66032d0acff3"
 }
+
+## Run WebService
+Use starNotaryWebService.js. This runs on port 8000
