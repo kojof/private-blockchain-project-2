@@ -83,6 +83,7 @@ app.post('/message-signature/validate', function (req, res) {
     const verifySignature = bitcoinMessage.verify(messageFormat, walletAddress, signature);
 
     const messageSignature = verifySignature ? "valid" : "invalid";
+
     let timeout = getTimeValidationWindow(walletAddress);
 
     var response = {
@@ -101,6 +102,16 @@ app.post('/message-signature/validate', function (req, res) {
 
 app.post('/block', async function (req, res) {
     const walletAddress = req.body.address;
+
+    if (!walletAddress) {
+        res.status(400).send('address is missing');
+    } else {
+        const timeStamp = timeValidationWindow.get(walletAddress);
+        if (!timeStamp) {
+            res.status(400).send('address has not been validated');
+        }
+    }
+
     const star = req.body.star;
 
     const convertMessage = JSON.stringify(star);
@@ -122,10 +133,12 @@ app.post('/block', async function (req, res) {
 
     var response = await blockChain.addBlock(new Block(body));
     res.json(response);
+    timeValidationWindow.delete(walletAddress);
+
 });
 
 
-app.get('/stars/address/:address', async function (req, res) {
+app.get('/stars/address:address', async function (req, res) {
     let block;
     try {
 
@@ -144,7 +157,7 @@ app.get('/stars/address/:address', async function (req, res) {
 });
 
 
-app.get('/stars/hash/:hash', async function (req, res) {
+app.get('/stars/hash:hash', async function (req, res) {
     let block;
     try {
 
@@ -188,10 +201,10 @@ function getTimeValidationWindow(walletAddress) {
     } else {
 
         const savedTimeStamp = timeValidationWindow.get(walletAddress);
-        if (savedTimeStamp == 0) {
+        if (savedTimeStamp == 300) {
             return;
         } else {
-            timeout = Date.now() - savedTimeStamp;
+            timeout = ((Date.now() - savedTimeStamp) / 1000).toFixed(0);
         }
     }
     return timeout;
