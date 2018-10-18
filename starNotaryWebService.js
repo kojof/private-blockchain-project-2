@@ -40,12 +40,7 @@ app.post('/requestValidation', async function (req, res) {
         let timeStamp = Date.now();
 
         const messageFormat = `${walletAddress}:${timeStamp}:${starRegistry}`;
-
-        var keyPair = bitcoin.ECPair.fromWIF('5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss');
-        var privateKey = keyPair.privateKey;
-        var signature = bitcoinMessage.sign(messageFormat, privateKey, keyPair.compressed).toString('base64');
-
-        //Use IF statement to delete validation request from memory if elapsed time exceeds 300, setTimeout() function
+    
         let timeout = getTimeValidationWindow(walletAddress);
 
         timeValidationWindow.set(walletAddress, timeStamp);
@@ -54,7 +49,7 @@ app.post('/requestValidation', async function (req, res) {
 
         var response = {
             "address": walletAddress,
-            "signature": signature,
+        //    "signature": signature,
             "requestTimeStamp": timeStamp,
             "message": messageFormat,
             "validationWindow": timeout
@@ -72,19 +67,27 @@ app.post('/requestValidation', async function (req, res) {
 
 
 app.post('/message-signature/validate', function (req, res) {
-    const walletAddress = req.body.address;
-    const signature = req.body.signature;
+    const walletAddress = req.body.address;  
     const starRegistry = "starRegistry";
 
     const timeStamp = timeValidationWindow.get(walletAddress);
 
     let messageFormat = `${walletAddress}:${timeStamp}:${starRegistry}`;
 
+    var keyPair = bitcoin.ECPair.fromWIF('5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss');
+    var privateKey = keyPair.privateKey;
+     var signature = bitcoinMessage.sign(messageFormat, privateKey, keyPair.compressed).toString('base64');
+
     const verifySignature = bitcoinMessage.verify(messageFormat, walletAddress, signature);
 
     const messageSignature = verifySignature ? "valid" : "invalid";
 
     let timeout = getTimeValidationWindow(walletAddress);
+
+    if(timeout ==0)
+    {
+        res.json("Time Validation Window has expired, pls resubmit request.");
+    }
 
     var response = {
         "registerStar": verifySignature,
@@ -105,10 +108,12 @@ app.post('/block', async function (req, res) {
 
     if (!walletAddress) {
         res.status(400).send('address is missing');
+        return;
     } else {
         const timeStamp = timeValidationWindow.get(walletAddress);
         if (!timeStamp) {
             res.status(400).send('address has not been validated');
+            return;
         }
     }
 
@@ -116,8 +121,9 @@ app.post('/block', async function (req, res) {
 
     if(!star || !star.ra || !star.dec || !star.story) {
         res.status(401).json({
-            error: "Invalid star object"
+            error: "Invalid star object"        
         });
+        return;
     }
 
     const convertMessage = JSON.stringify(star);
@@ -127,16 +133,33 @@ app.post('/block', async function (req, res) {
     const right_ascension = message.ra;
     const declination = message.dec;
     const storyBuffer = Buffer.from(story, 'ascii');
+    
+    if(!isASCII(storyBuffer))
+    {
+        res.status(401).json({
+            error: "Story must only contain Ascii Characters"        
+        });
+        return;
+    }
+
+    if(!checkByteLength(storyBuffer))
+    {
+        res.status(401).json({
+            error: "Story cannot be greater than 500 bytes"        
+        });
+        return;
+    }
 
     const body = {
         "address": walletAddress,
         "star": {
             "ra": right_ascension,
+            
             "dec": declination,
             "story": storyBuffer.toString('hex')
         }
     };
-
+   
     var response = await blockChain.addBlock(new Block(body));
     res.json(response);
     timeValidationWindow.delete(walletAddress);
@@ -202,19 +225,33 @@ app.get('/block/:height', async function (req, res) {
 
 function getTimeValidationWindow(walletAddress) {
     let timeout = 0;
-    if (timeValidationWindow.get(walletAddress) == null) {
-        timeout = 300;
-    } else {
-
+    if (timeValidationWindow.get(walletAddress) == null) 
+    {
+        timeout = 300;       
+    } 
+    else 
+    {
         const savedTimeStamp = timeValidationWindow.get(walletAddress);
-        if (savedTimeStamp == 300) {
-            return;
-        } else {
-            timeout = ((Date.now() - savedTimeStamp) / 1000).toFixed(0);
-        }
+        timeout = 300 - ((Date.now() - savedTimeStamp) / 1000).toFixed(0);       
+      
     }
     return timeout;
 }
+
+
+    function isASCII(str) {
+        return  /^[\000-\177]*$/.test(str) ;
+    }
+
+    function  checkByteLength(str) 
+    {
+        if(str.byteLength >= 500)
+        {
+            return false;
+        }
+        return true;
+    }
+   
 
 const port = process.env.port || 8000;
 app.listen(port, () => console.log(`App listening on port ${port}...`));
