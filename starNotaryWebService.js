@@ -114,6 +114,12 @@ app.post('/block', async function (req, res) {
 
     const star = req.body.star;
 
+    if(!star || !star.ra || !star.dec || !star.story) {
+        res.status(401).json({
+            error: "Invalid star object"
+        });
+    }
+
     const convertMessage = JSON.stringify(star);
     let message = JSON.parse(convertMessage);
 
@@ -138,7 +144,7 @@ app.post('/block', async function (req, res) {
 });
 
 
-app.get('/stars/address:address', async function (req, res) {
+app.get('/stars/address::address', async function (req, res) {
     let block;
     try {
 
@@ -147,8 +153,8 @@ app.get('/stars/address:address', async function (req, res) {
         }
         const walletAddress = req.params.address;
         const response = await blockChain.getBlocksByAddress(walletAddress);
-        console.log(response);
-        res.json();
+        
+        res.json(response);
     } catch (error) {
         res.status(500).json({
             error: error.toString()
@@ -157,7 +163,7 @@ app.get('/stars/address:address', async function (req, res) {
 });
 
 
-app.get('/stars/hash:hash', async function (req, res) {
+app.get('/stars/hash::hash', async function (req, res) {
     let block;
     try {
 
@@ -166,7 +172,7 @@ app.get('/stars/hash:hash', async function (req, res) {
         }
         const hash = req.params.hash;
         const response = await blockChain.getBlocksByHash(hash);
-        // console.log(response);
+        
         res.json(response);
     } catch (error) {
         res.status(500).json({
