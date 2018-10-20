@@ -5,29 +5,21 @@ const bitcoinMessage = require('bitcoinjs-message');
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
-const timeout = require('connect-timeout');
+
+if (typeof localStorage === "undefined" || localStorage === null) {
+    var LocalStorage = require('node-localstorage').LocalStorage;
+    localStorage = new LocalStorage('./scratch');
+}
 
 app.use(bodyParser.urlencoded({ // to support URL-encoded bodies
     extended: true
 }));
 app.use(express.json());
 app.use(express.urlencoded());
-
-let timeValidationWindow = new Map();
 let blockChain = new BlockChain();
 
+
 app.get('/', (req, res) => res.send('hello world'));
-
-// app.use(function (req, res, next) {
-//     res.setTimeout(300000, function () {
-//         const address = req.body.address;
-//         console.log('Request has timed out.');
-//         timeValidationWindow.delete(address);
-//         //     res.send(408);
-//     });
-
-//     next();
-// });
 
 app.post('/requestValidation', async function (req, res) {
     try {
@@ -38,21 +30,20 @@ app.post('/requestValidation', async function (req, res) {
         const walletAddress = req.body.address;
         const starRegistry = "starRegistry";
         let timeStamp = Date.now();
+        if (localStorage.getItem(walletAddress) != null) {
+            timeStamp = localStorage.getItem(walletAddress);
+        }
+
+        let timeOut = getTimeValidationWindow(walletAddress);
+
+        console.log(`${timeOut} ms have passed since I was scheduled`);
 
         const messageFormat = `${walletAddress}:${timeStamp}:${starRegistry}`;
-    
-        let timeout = getTimeValidationWindow(walletAddress);
-
-        timeValidationWindow.set(walletAddress, timeStamp);
-
-        console.log(`${timeout} ms have passed since I was scheduled`);
-
         var response = {
-            "address": walletAddress,
-        //    "signature": signature,
+            "address": walletAddress,           
             "requestTimeStamp": timeStamp,
             "message": messageFormat,
-            "validationWindow": timeout
+            "validationWindow": timeOut
         };
 
         res.json(response);
@@ -67,26 +58,24 @@ app.post('/requestValidation', async function (req, res) {
 
 
 app.post('/message-signature/validate', function (req, res) {
-    const walletAddress = req.body.address;  
+    const walletAddress = req.body.address;
+    const signature = req.body.signature;
     const starRegistry = "starRegistry";
 
-    const timeStamp = timeValidationWindow.get(walletAddress);
+    const timeStamp = localStorage.getItem(walletAddress);
 
     let messageFormat = `${walletAddress}:${timeStamp}:${starRegistry}`;
-
-    var keyPair = bitcoin.ECPair.fromWIF('5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss');
-    var privateKey = keyPair.privateKey;
-     var signature = bitcoinMessage.sign(messageFormat, privateKey, keyPair.compressed).toString('base64');
 
     const verifySignature = bitcoinMessage.verify(messageFormat, walletAddress, signature);
 
     const messageSignature = verifySignature ? "valid" : "invalid";
 
-    let timeout = getTimeValidationWindow(walletAddress);
+    let timeOut = getTimeValidationWindow(walletAddress);
 
-    if(timeout ==0)
-    {
+    if (timeOut == 0) {
         res.json("Time Validation Window has expired, pls resubmit request.");
+        localStorage.removeItem(walletAddress);
+        return;
     }
 
     var response = {
@@ -95,37 +84,36 @@ app.post('/message-signature/validate', function (req, res) {
             "address": walletAddress,
             "requestTimeStamp": timeStamp,
             "message": messageFormat,
-            "validationWindow": timeout,
+            "validationWindow": timeOut,
             "messageSignature": messageSignature
         }
     };
 
-    res.json(response);
+    res.json(response);   
+    localStorage.setItem("registerStar", verifySignature);     
 });
 
 app.post('/block', async function (req, res) {
-    const walletAddress = req.body.address;
 
-    if (!walletAddress) {
+    if (!req.body.address) {
         res.status(400).send('address is missing');
         return;
     } else {
-        const timeStamp = timeValidationWindow.get(walletAddress);
+        const timeStamp = localStorage.getItem(req.body.address);
         if (!timeStamp) {
             res.status(400).send('address has not been validated');
             return;
         }
-    }
+    };
 
-    const star = req.body.star;
-
-    if(!star || !star.ra || !star.dec || !star.story) {
-        res.status(401).json({
-            error: "Invalid star object"        
-        });
+    if(localStorage.getItem("registerStar") == null)
+    {
+        res.status(400).send('please register star before proceeding to this step');
         return;
-    }
+    }    
 
+    const walletAddress = req.body.address;
+    const star = req.body.star
     const convertMessage = JSON.stringify(star);
     let message = JSON.parse(convertMessage);
 
@@ -133,19 +121,27 @@ app.post('/block', async function (req, res) {
     const right_ascension = message.ra;
     const declination = message.dec;
     const storyBuffer = Buffer.from(story, 'ascii');
-    
-    if(!isASCII(storyBuffer))
-    {
+
+    //check that star is valid
+    if (!star || !star.ra || !star.dec || !star.story) {
         res.status(401).json({
-            error: "Story must only contain Ascii Characters"        
+            error: "Invalid star object"
         });
         return;
     }
 
-    if(!checkByteLength(storyBuffer))
-    {
+    //check that story does not have non-ascii characters
+    if (!isASCII(storyBuffer)) {
         res.status(401).json({
-            error: "Story cannot be greater than 500 bytes"        
+            error: "Story must only contain Ascii Characters"
+        });
+        return;
+    }
+
+    //check lenght of story is not greater than 500 bytes
+    if (!checkByteLength(storyBuffer)) {
+        res.status(401).json({
+            error: "Story cannot be greater than 500 bytes"
         });
         return;
     }
@@ -154,16 +150,15 @@ app.post('/block', async function (req, res) {
         "address": walletAddress,
         "star": {
             "ra": right_ascension,
-            
             "dec": declination,
             "story": storyBuffer.toString('hex')
         }
     };
-   
+
     var response = await blockChain.addBlock(new Block(body));
     res.json(response);
-    timeValidationWindow.delete(walletAddress);
-
+    localStorage.removeItem(walletAddress);
+    localStorage.removeItem("registerStar");    
 });
 
 
@@ -176,7 +171,7 @@ app.get('/stars/address::address', async function (req, res) {
         }
         const walletAddress = req.params.address;
         const response = await blockChain.getBlocksByAddress(walletAddress);
-        
+
         res.json(response);
     } catch (error) {
         res.status(500).json({
@@ -195,7 +190,7 @@ app.get('/stars/hash::hash', async function (req, res) {
         }
         const hash = req.params.hash;
         const response = await blockChain.getBlocksByHash(hash);
-        
+
         res.json(response);
     } catch (error) {
         res.status(500).json({
@@ -224,34 +219,35 @@ app.get('/block/:height', async function (req, res) {
 
 
 function getTimeValidationWindow(walletAddress) {
-    let timeout = 0;
-    if (timeValidationWindow.get(walletAddress) == null) 
-    {
-        timeout = 300;       
-    } 
-    else 
-    {
-        const savedTimeStamp = timeValidationWindow.get(walletAddress);
-        timeout = 300 - ((Date.now() - savedTimeStamp) / 1000).toFixed(0);       
-      
+
+    let timeOut = 0;
+    if (localStorage.getItem(walletAddress) == null) {
+        let timeStamp = Date.now();
+        timeOut = 300;
+        localStorage.setItem(walletAddress, timeStamp);
+    } else {
+        const savedTimeStamp = localStorage.getItem(walletAddress);
+        timeOut = 300 - ((Date.now() - savedTimeStamp) / 1000).toFixed(0);
+        if (timeOut <= 0) {
+            return 0;
+        }
     }
-    return timeout;
+    return timeOut;
 }
 
+//check if any characters are non-ascii
+function isASCII(str) {
+    return /^[\000-\177]*$/.test(str);
+}
 
-    function isASCII(str) {
-        return  /^[\000-\177]*$/.test(str) ;
+//check the length of a string is less than 500 bytes
+function checkByteLength(str) {
+    if (str.byteLength >= 500) {
+        return false;
     }
+    return true;
+}
 
-    function  checkByteLength(str) 
-    {
-        if(str.byteLength >= 500)
-        {
-            return false;
-        }
-        return true;
-    }
-   
 
 const port = process.env.port || 8000;
 app.listen(port, () => console.log(`App listening on port ${port}...`));
